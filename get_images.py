@@ -1,63 +1,54 @@
-# -*- coding: utf-8 -*-
-
-# This file is part of PyBOSSA.
-#
-# PyBOSSA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# PyBOSSA is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with PyBOSSA.  If not, see <http://www.gnu.org/licenses/>.
-# Modifications by A. Sańchez de Miguel
-
-import urllib
-import urllib2
-import re
+# IPython log file
+import numpy as np
+import flickrapi
 import json
-import string
+import datetime
+t=datetime.datetime.now()
+y=datetime.datetime.fromordinal((t.toordinal()-1)).strftime('%Y-%m-%d %H:%M:%S')
+def get_flickr_photos(date=y):
+    api_key = '31c572120176f492413eeec8a67cf5c6'
+    flickr = flickrapi.FlickrAPI(api_key)
+    api_secret = 'cc7dbc2d478587a8'
+    flickr = flickrapi.FlickrAPI(api_key, api_secret)
+    (token, frob) = flickr.get_token_part_one(perms='write')
+    if not token: 
+        raw_input("Press ENTER after you authorized this program")
+        flickr.get_token_part_two((token, frob))
+        print flickr.get_token_part_two((token, frob))
 
+    import json
+    url=flickr.urls_getUserPhotos(user='65933735@N00',format='json')
+    urlG=json.loads(url[14:-1])
+    urlG=urlG['user']['url']
+    datos=flickr.photos_search(user_id='65933735@N00',format='json',min_upload_date=date)
+    datosP=json.loads(datos[14:-1])
 
-def get_flickr_photos(size="big"):
-    """
-    Gets public photos from Flickr feeds
-    :arg string size: Size of the image from Flickr feed.
-    :returns: A list of photos.
-    :rtype: list
-    """
-    # Get the ID of the photos and load it in the output var
-    # add the 'ids': '65933735@N00' to the values dict if you want to
-    # specify a Flickr Person ID
-    print('Contacting Flickr for photos')
-    url = "http://api.flickr.com/services/feeds/photos_public.gne"
-    values = {'nojsoncallback': 1,'ids': '65933735@N00',
-              'format': "json"}
-
-    query = url + "?" + urllib.urlencode(values)
-    urlobj = urllib2.urlopen(query)
-    data = urlobj.read()
-    urlobj.close()
-    # The returned JSON object by Flickr is not correctly escaped,
-    # so we have to fix it see
-    # http://goo.gl/A9VNo
-    regex = re.compile(r'\\(?![/u"])')
-    fixed = regex.sub(r"\\\\", data)
-    output = json.loads(fixed)
-    print('Data retrieved from Flickr')
-
-    # For each photo ID create its direct URL according to its size:
-    # big, medium, small (or thumbnail) + Flickr page hosting the photo
-    photos = []
-    for idx, photo in enumerate(output['items']):
-        print 'Retrieved photo: %s' % idx
-        imgTitle = photo["title"]
-        imgUrl_m = photo["media"]["m"]
-        imgUrl_b = string.replace(photo["media"]["m"], "_m.jpg", "_b.jpg")
-        photos.append({'link': photo["link"], 'url_m':  imgUrl_m,
+    m=[]
+    b=[]
+    l=[]
+    q=[]
+    t=[]
+    photos=[]
+    n=len(datosP['photos']['photo'])
+    for x in range(n):
+        m.append('https://farm'+str(datosP['photos']['photo'][x]['farm'])+'.staticflickr.com/'+datosP['photos']['photo'][x]['server']+'/'+datosP['photos']['photo'][x]['id']+'_'+datosP['photos']['photo'][x]['secret']+'_m.jpg')
+        q.append('Can you see a meteor?')
+        b.append('https://farm'+str(datosP['photos']['photo'][x]['farm'])+'.staticflickr.com/'+datosP['photos']['photo'][x]['server']+'/'+datosP['photos']['photo'][x]['id']+'_'+datosP['photos']['photo'][x]['secret']+'_b.jpg')
+        l.append(urlG+datosP['photos']['photo'][x]['id'])
+        t.append(datosP['photos']['photo'][x]['title'])
+        
+    data = np.zeros((n,),dtype=[('Link','a100'),('question','a100'), ('Url_m','a100'), ('Url_b', 'a100'),('Title', 'a100')])
+    data['Link']=np.array(l)
+    data['question']=np.array(q)
+    data['Url_m']=np.array(m)
+    data['Url_b']=np.array(b)
+    data['Title']=np.array(t)
+    
+    for x in range(n):
+        link = data[x]['Link']
+        imgTitle = data[x]['Title']
+        imgUrl_m = data[x]['Url_m']
+        imgUrl_b = data[x]['Url_b']
+        photos.append({'link': link, 'url_m':  imgUrl_m,
                        'url_b': imgUrl_b,'title': imgTitle})
     return photos
